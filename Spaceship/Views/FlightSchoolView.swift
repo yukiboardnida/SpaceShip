@@ -51,12 +51,12 @@ struct FlightSchoolView: View {
 
                 if let throttleDisplay = attachments.entity(for: Self.throttleDisplayId) {
                     throttleDisplay.components.set(ThrottleLabelPlacementComponent())
-                    throttleDisplay.components.set(BillboardComponent.rotateAroundYAxis)
+                    throttleDisplay.components.set(BillboardComponent())
                     content.add(throttleDisplay)
                 }
                 if let pitchRollDisplay = attachments.entity(for: Self.pitchRollDisplayId) {
                     pitchRollDisplay.components.set(PitchRollLabelPlacementComponent())
-                    pitchRollDisplay.components.set(BillboardComponent.rotateAroundYAxis)
+                    pitchRollDisplay.components.set(BillboardComponent())
                     content.add(pitchRollDisplay)
                 }
 

@@ -81,7 +81,7 @@ extension Entity {
             spotLight.outerAngleInDegrees = 60
             
             var spotLightShadow = SpotLightComponent.Shadow()
-            spotLightShadow.zFar = 20
+            spotLightShadow.zFar = .fixed(20)
             headLightEntity.components.set([spotLight, spotLightShadow])
         }
     }
