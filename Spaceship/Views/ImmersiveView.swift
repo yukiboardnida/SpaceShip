@@ -36,7 +36,7 @@ struct ImmersiveView: View {
 #if os(iOS)
             // MARK: On iOS, set up RealityView to use AR world tracking
             await content.setupWorldTracking()
-            content.camera = .worldTracking
+            content.camera = .spatialTracking
 #endif
         }
         .task {

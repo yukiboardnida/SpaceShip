@@ -140,7 +140,7 @@ struct SpaceshipView: View, Animatable {
                 spaceship.position.z -= 0.3
 
                 await content.setupWorldTracking()
-                content.camera = .worldTracking
+                content.camera = .spatialTracking
 #endif
                 content.add(spaceship)
             } catch {
