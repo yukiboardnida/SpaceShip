@@ -1,0 +1,4 @@
+module RealityKitContent {
+    header "/Users/yukiniida/Documents/研究関連/CreatingASpaceshipGame/Packages/RealityKitContent/.build/index-build/arm64-apple-macosx/debug/RealityKitContent.build/RealityKitContent-Swift.h"
+    requires objc
+}

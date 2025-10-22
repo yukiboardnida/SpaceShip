@@ -1304,8 +1304,8 @@ def Xform "Root" (
             references = @geometry/Fighter_ship.usdz@
         )
         {
-            quatf xformOp:orient = (-1.083822e-7, 1.0838222e-7, 0.70710677, 0.7071067)
-            float3 xformOp:scale = (0.42999995, 0.42999995, 0.42999995)
+            quatf xformOp:orient = (0, 0, 1, 0)
+            float3 xformOp:scale = (0.02, 0.02, 0.02)
             float3 xformOp:translate = (-3.984223e-8, 0.16765998, -8.7877964e-8)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
