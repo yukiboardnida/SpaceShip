@@ -25,10 +25,36 @@ struct ShipFlightComponent: Component {
     }
 }
 
+/// ペットのように行ったり来たりするランダム飛行の方向を保持するコンポーネント。
+struct RandomFlightDirectionComponent: Component {
+    var direction: SIMD3<Float>
+
+    init(direction: SIMD3<Float>? = nil) {
+        if let dir = direction {
+            self.direction = normalize(dir)
+        } else {
+            // 初期方向はランダム
+            self.direction = normalize(SIMD3<Float>(
+                Float.random(in: -1...1),
+                Float.random(in: -1...1),
+                Float.random(in: -1...1)
+            ))
+        }
+    }
+}
+
 /// 宇宙船の飛行物理を処理するシステム。
 ///
 /// スロットル、ピッチ、ロールの入力に基づいて、宇宙船の動きと回転を更新します。
 final class ShipFlightSystem: System {
+
+    enum FlightMode {
+        case randomOnly
+        case humanOnly
+        case both
+    }
+
+    static var currentMode: FlightMode = .randomOnly
 
     /// このシステムが処理するエンティティを特定するためのクエリ。
     /// 飛行、スロットル、ピッチ/ロールのコンポーネントをすべて持つエンティティが対象です。
@@ -40,6 +66,11 @@ final class ShipFlightSystem: System {
         )
     )
 
+    /// ランダム飛行方向を持つエンティティを特定するためのクエリ。
+    static let randomDirectionQuery = EntityQuery(
+        where: .has(RandomFlightDirectionComponent.self)
+    )
+
     /// システムの初期化メソッド。シーンのロード時にRealityKitによって呼び出されます。
     init(scene: Scene) {}
 
@@ -49,10 +80,6 @@ final class ShipFlightSystem: System {
         // クエリに一致するすべてのエンティティ（宇宙船）に対してループ処理を行います。
         for entity in context.entities(matching: Self.query, updatingSystemWhen: .rendering) {
 
-            // 関連コンポーネントから現在の入力値を取得します。
-            let throttle = entity.components[ThrottleComponent.self]!.throttle
-            let pitchRoll = entity.components[PitchRollComponent.self]!
-
             // 飛行状態を保持するコンポーネント（ShipFlightStateComponent）が存在しない場合は、新しく作成して追加します。
             if entity.components[ShipFlightStateComponent.self] == nil {
                 entity.components.set(ShipFlightStateComponent())
@@ -61,38 +88,43 @@ final class ShipFlightSystem: System {
             // 飛行状態コンポーネントを取得します。これは宇宙船の現在の回転状態を保持します。
             var flightState = entity.components[ShipFlightStateComponent.self]!
 
-            let pitch = pitchRoll.pitch
-            let roll = pitchRoll.roll
-
-            // 前回のフレームからの経過時間を取得します。
             let deltaTime = Float(context.deltaTime)
-            // 回転の感度と、宇宙船の傾きの最大角度を定義します。
-            let turnSpeed: Float = 1
-            let maxPitchRoll: Float = 0.7
 
-            // ロール入力に基づいて、ヨー回転（水平方向の向き）を計算し、更新します。
-            let yawDelta = simd_quatf(angle: roll * deltaTime * turnSpeed, axis: .upward)
-            flightState.yaw = (flightState.yaw * yawDelta).normalized
+            if Self.currentMode == .humanOnly || Self.currentMode == .both {
+                // Human control flight logic
+                let pitchRoll = entity.components[PitchRollComponent.self]!
+                let pitch = pitchRoll.pitch
+                let roll = pitchRoll.roll
 
-            // ピッチとロールの入力に基づいて、宇宙船の目標となる傾き（クォータニオン）を計算します。
-            let newRoll = simd_quatf(angle: -roll * maxPitchRoll, axis: .back)
-            let newPitch = simd_quatf(angle: pitch * maxPitchRoll, axis: .left)
-            // 現在の傾きから目標の傾きへと滑らかに補間（slerp）し、自然な動きを実現します。
-            flightState.pitchRoll = simd_slerp(flightState.pitchRoll, newRoll * newPitch, deltaTime * 2).normalized
+                // 回転の感度と、宇宙船の傾きの最大角度を定義します。
+                let turnSpeed: Float = 1
+                let maxPitchRoll: Float = 0.7
 
-            // 計算されたヨー回転と傾きを合成して、エンティティの最終的な回転を決定します。
-            entity.transform.rotation = (flightState.yaw * flightState.pitchRoll).normalized
-            // 更新された飛行状態をコンポーネントに書き戻します。
-            entity.components[ShipFlightStateComponent.self] = flightState
+                // ロール入力に基づいて、ヨー回転（水平方向の向き）を計算し、更新します。
+                let yawDelta = simd_quatf(angle: roll * deltaTime * turnSpeed, axis: .upward)
+                flightState.yaw = (flightState.yaw * yawDelta).normalized
+
+                // ピッチとロールの入力に基づいて、宇宙船の目標となる傾き（クォータニオン）を計算します。
+                let newRoll = simd_quatf(angle: -roll * maxPitchRoll, axis: .back)
+                let newPitch = simd_quatf(angle: pitch * maxPitchRoll, axis: .left)
+                // 現在の傾きから目標の傾きへと滑らかに補間（slerp）し、自然な動きを実現します。
+                flightState.pitchRoll = simd_slerp(flightState.pitchRoll, newRoll * newPitch, deltaTime * 2).normalized
+
+                // 計算されたヨー回転と傾きを合成して、エンティティの最終的な回転を決定します。
+                entity.transform.rotation = (flightState.yaw * flightState.pitchRoll).normalized
+                // 更新された飛行状態をコンポーネントに書き戻します。
+                entity.components[ShipFlightStateComponent.self] = flightState
+            }
 
             // エンティティが物理的な挙動を持つ（HasPhysics）ことを確認します。
             guard let physicsEntity = entity as? HasPhysics else { return }
 
-            // 主推力コンポーネントが存在する場合、スロットル入力に応じて前方に力を加えます。
-            if entity.components.has(PrimaryThrustComponent.self) {
-                let strength: Float = 40
-                let primaryThrust = entity.transform.matrix.forward * throttle * strength * deltaTime
-                physicsEntity.addForce(primaryThrust, relativeTo: nil)
+            if Self.currentMode == .randomOnly || Self.currentMode == .both {
+                if entity.components.has(RandomFlightDirectionComponent.self) {
+                    applyPetLikeMovement(to: physicsEntity, entity: entity, deltaTime: deltaTime)
+                } else if entity.components.has(PrimaryThrustComponent.self) {
+                    applyRandomThrust(to: physicsEntity, deltaTime: deltaTime)
+                }
             }
 
             // 物理モーションコンポーネントを取得します。これには線形速度などの情報が含まれます。
@@ -117,6 +149,86 @@ final class ShipFlightSystem: System {
                                   -rightVelocity * shipRight * deltaTime * verticalAssistStrength
             physicsEntity.addForce(assistiveThrust, relativeTo: nil)
         }
+    }
+
+    private func applyPetLikeMovement(to physicsEntity: HasPhysics, entity: Entity, deltaTime: Float) {
+        guard var randomDirComp = entity.components[RandomFlightDirectionComponent.self] else {
+            return
+        }
+
+        let position = physicsEntity.position(relativeTo: nil)
+        let origin = SIMD3<Float>(0, 0, 0)
+        let _: Float = 10.0
+
+        // ランダムに方向を少しずつ変化させる（より激しく）
+        let randomChange = SIMD3<Float>(
+            Float.random(in: -1.5...1.5),
+            Float.random(in: -1.5...1.5),
+            Float.random(in: -1.5...1.5)
+        )
+        randomDirComp.direction += randomChange * deltaTime
+        randomDirComp.direction = normalize(randomDirComp.direction)
+
+        // 原点方向へのやわらい補正
+        let toOrigin = normalize(origin - position)
+        let correctionStrength: Float = 0.5
+        randomDirComp.direction = normalize(mix(randomDirComp.direction, toOrigin, t: correctionStrength * deltaTime))
+
+        // 方向を更新
+        entity.components.set(randomDirComp)
+
+        // 推力を加える
+        let strength: Float = 200
+        let force = randomDirComp.direction * strength * deltaTime
+        physicsEntity.addForce(force, relativeTo: nil)
+
+        // ランダム回転（滑らかに slerp 補間）
+        let currentRotation = physicsEntity.transform.rotation
+        let randomAxis = normalize(SIMD3<Float>(
+            Float.random(in: -1...1),
+            Float.random(in: -1...1),
+            Float.random(in: -1...1)
+        ))
+        let randomAngle = Float.random(in: -Float.pi/8...Float.pi/8) * deltaTime
+        let randomRotation = simd_quatf(angle: randomAngle, axis: randomAxis)
+
+        // Pitch と Roll のランダム角度を拡大してより激しく傾くように
+        let pitchAngle = Float.random(in: -Float.pi...Float.pi) * deltaTime
+        let rollAngle = Float.random(in: -Float.pi...Float.pi) * deltaTime
+        let pitchRotation = simd_quatf(angle: pitchAngle, axis: .left)
+        let rollRotation = simd_quatf(angle: rollAngle, axis: .back)
+        let pitchRollRotation = (rollRotation * pitchRotation).normalized
+
+        // 現在の回転に Pitch/Roll を加算
+        let targetRotation = (currentRotation * pitchRollRotation * randomRotation).normalized
+
+        // slerp で滑らかに補間
+        let newRotation = simd_slerp(currentRotation, targetRotation, deltaTime).normalized
+        physicsEntity.transform.rotation = newRotation
+    }
+
+    private func applyRandomThrust(to physicsEntity: HasPhysics, deltaTime: Float) {
+        let position = physicsEntity.position(relativeTo: nil)
+        let origin = SIMD3<Float>(0, 0, 0) // 自分の位置など、基準点に置き換え可
+        let distance = length(position - origin)
+        let maxDistance: Float = 1000.0
+
+        // ランダム方向を生成
+        var direction = normalize(SIMD3<Float>(
+            Float.random(in: -1...1),
+            Float.random(in: -1...1),
+            Float.random(in: -1...1)
+        ))
+
+        // 遠ざかりすぎたら、中心に戻す方向へ
+        if distance > maxDistance {
+            direction = normalize(origin - position)
+        }
+
+        // 推力を加える
+        let strength: Float = 100
+        let force = direction * strength * deltaTime
+        physicsEntity.addForce(force, relativeTo: nil)
     }
 }
 
