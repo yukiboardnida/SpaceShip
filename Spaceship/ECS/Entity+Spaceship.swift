@@ -31,7 +31,7 @@ extension Entity {
         // 物理ボディコンポーネントを動的モードで作成します。
         var physicsBody = PhysicsBodyComponent(mode: .dynamic)
         // 重力の影響を受けないように設定します。
-        physicsBody.isAffectedByGravity = false
+        physicsBody.isAffectedByGravity = true
         // 直線運動の減衰を設定します。
         physicsBody.linearDamping = 0.2
         // 質量を設定します。
