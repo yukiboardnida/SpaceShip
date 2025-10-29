@@ -1,0 +1,53 @@
+{
+  "9E326BC2-CD67-4A49-AB88-724D8E1D2C8B" : {
+    "objectMetadataList" : [
+      [
+        "9E326BC2-CD67-4A49-AB88-724D8E1D2C8B",
+        "Root",
+        "Intact",
+        "RightEngine"
+      ],
+      {
+        "isExpanded" : true,
+        "isLocked" : false
+      },
+      [
+        "9E326BC2-CD67-4A49-AB88-724D8E1D2C8B",
+        "Root",
+        "Intact",
+        "Fighter_ship"
+      ],
+      {
+        "isExpanded" : true,
+        "isLocked" : false
+      },
+      [
+        "9E326BC2-CD67-4A49-AB88-724D8E1D2C8B",
+        "Root",
+        "Intact"
+      ],
+      {
+        "isExpanded" : true,
+        "isLocked" : false
+      },
+      [
+        "9E326BC2-CD67-4A49-AB88-724D8E1D2C8B",
+        "Root",
+        "Intact",
+        "LeftEngine"
+      ],
+      {
+        "isExpanded" : true,
+        "isLocked" : false
+      },
+      [
+        "9E326BC2-CD67-4A49-AB88-724D8E1D2C8B",
+        "Root"
+      ],
+      {
+        "isExpanded" : true,
+        "isLocked" : false
+      }
+    ]
+  }
+}

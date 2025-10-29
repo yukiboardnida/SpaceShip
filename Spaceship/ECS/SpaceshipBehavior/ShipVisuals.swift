@@ -16,19 +16,34 @@ final class ShipVisualsSystem: System {
     func update(context: SceneUpdateContext) {
         for entity in context.entities(matching: Self.query, updatingSystemWhen: .rendering) {
 
-            let throttle = entity.components[ThrottleComponent.self]!.throttle
+            guard let throttleComponent = entity.components[ThrottleComponent.self] else {
+                print("ThrottleComponent not found for entity \(entity.name)")
+                continue
+            }
+            let throttle = throttleComponent.throttle
 
             for engineName in ["LeftEngine", "RightEngine"] {
-                let engine = entity.findEntity(named: engineName)!
-                let exhaust = engine.findEntity(named: "Exhaust")!
-                updateExhaust(exhaust, throttle: throttle)
-                let particles = engine.findEntity(named: "ParticleEmitter")!
-                updateVaporTrail(particles, throttle: throttle)
-
-                if let physicsMotion = entity.components[PhysicsMotionComponent.self] {
-                    let forwardVelocity = dot(physicsMotion.linearVelocity, entity.transform.matrix.forward)
-                    let wingTip = engine.findEntity(named: "WingTip")!
-                    updateWingTip(wingTip, forwardVelocity: forwardVelocity)
+                if let engine = entity.findEntity(named: engineName) {
+                    if let exhaust = engine.findEntity(named: "Exhaust") {
+                        updateExhaust(exhaust, throttle: throttle)
+                    } else {
+                        print("Exhaust not found in engine \(engineName)")
+                    }
+                    if let particles = engine.findEntity(named: "ParticleEmitter") {
+                        updateVaporTrail(particles, throttle: throttle)
+                    } else {
+                        print("ParticleEmitter not found in engine \(engineName)")
+                    }
+                    if let physicsMotion = entity.components[PhysicsMotionComponent.self] {
+                        let forwardVelocity = dot(physicsMotion.linearVelocity, entity.transform.matrix.forward)
+                        if let wingTip = engine.findEntity(named: "WingTip") {
+                            updateWingTip(wingTip, forwardVelocity: forwardVelocity)
+                        } else {
+                            print("WingTip not found in engine \(engineName)")
+                        }
+                    }
+                } else {
+                    print("Engine \(engineName) not found in entity \(entity.name)")
                 }
             }
         }
@@ -39,9 +54,12 @@ final class ShipVisualsSystem: System {
     }
 
     func updateVaporTrail(_ vaporTrail: Entity, throttle: Float) {
-        var particleEmitter = vaporTrail.components[ParticleEmitterComponent.self]!
-        particleEmitter.mainEmitter.lifeSpan = Double(throttle) * 0.1
-        vaporTrail.components.set(particleEmitter)
+        if var particleEmitter = vaporTrail.components[ParticleEmitterComponent.self] {
+            particleEmitter.mainEmitter.lifeSpan = Double(throttle) * 0.1
+            vaporTrail.components.set(particleEmitter)
+        } else {
+            print("ParticleEmitterComponent not found for vaporTrail entity \(vaporTrail.name)")
+        }
     }
 
     func updateWingTip(_ wingTip: Entity, forwardVelocity: Float) {
