@@ -128,7 +128,8 @@ final class HandsShipControlProviderSystem: System {
     /// 宇宙船（またはキャラクター）の制御パラメータを手の追跡データに基づいて更新します。
     /// 左手のピンチでスロットルを、右手の位置で歩行方向を決定します。
     func updateShipControlParameters(for entity: Entity, context: SceneUpdateContext, transforms: [HandTrackingComponent.Location: simd_float4x4]) {
-        let shipControlParameters = entity.components[ShipControlComponent.self]!.parameters
+        guard let shipControlComponent = entity.components[ShipControlComponent.self] else { return }
+        let shipControlParameters = shipControlComponent.parameters
         let currentThrottle = shipControlParameters.throttle
 
         // 左手の人差し指と親指の先端が追跡されているか確認します。
@@ -160,16 +161,24 @@ final class HandsShipControlProviderSystem: System {
         // 右手の位置とキャラクターの位置から、歩行方向を計算します。
         let walkingDirection = computeWalkingDirection(rightPalmTransform: rightPalmTransform, characterPosition: characterPosition)
 
-        // TODO: ShipControlParametersに新しいプロパティ(direction)を追加して、そこに保存することを想定しています。
-        // (ShipControlParametersの変更も後ほど必要になります)
-        // shipControlParameters.direction = walkingDirection
+        // 新たにyawを計算して設定します。
+        let yaw = computeYawFromRightHand(rightPalmTransform: rightPalmTransform, characterPosition: characterPosition)
+        shipControlParameters.yaw = yaw
 
         // 既存のpitchとrollは歩行操作では使用しないため、0に設定します。
         shipControlParameters.pitch = 0
         shipControlParameters.roll = 0
 
+        // Yaw回転をエンティティのtransformに適用します。
+        let rotationQuat = simd_quatf(angle: yaw, axis: SIMD3<Float>(0, 1, 0))
+        var currentTransform = entity.transformMatrix(relativeTo: nil)
+        currentTransform.columns.0 = rotationQuat.act(SIMD3<Float>(1,0,0)).toSIMD4(w: 0)
+        currentTransform.columns.1 = rotationQuat.act(SIMD3<Float>(0,1,0)).toSIMD4(w: 0)
+        currentTransform.columns.2 = rotationQuat.act(SIMD3<Float>(0,0,1)).toSIMD4(w: 0)
+        entity.setTransformMatrix(currentTransform, relativeTo: nil)
+
         // デバッグ用に計算された歩行方向をコンソールに出力します。
-        print("Walking Direction: \(walkingDirection)")
+        print("Walking Direction: \(walkingDirection), Yaw: \(yaw)")
     }
 
     /// 現在のスロットル値から目標スロットル値へ滑らかに補間します。
@@ -211,6 +220,24 @@ final class HandsShipControlProviderSystem: System {
         } else {
             // 右手がキャラクターの真上にある場合など、方向が計算できない場合はデフォルトの前方（-Z方向）を返します。
             return SIMD3<Float>(0, 0, -1)
+        }
+    }
+
+    /// 右手の位置からyaw角を計算します。
+    /// - Parameters:
+    ///   - rightPalmTransform: 右手のひらのワールド座標における変換行列。
+    ///   - characterPosition: キャラクターのワールド座標における位置。
+    /// - Returns: Yaw角（ラジアン）。
+    func computeYawFromRightHand(rightPalmTransform: float4x4, characterPosition: SIMD3<Float>) -> Float {
+        let rightPalmPosition = rightPalmTransform.translation
+        var direction = rightPalmPosition - characterPosition
+        direction.y = 0
+        if length(direction) > 0 {
+            let normalizedDirection = normalize(direction)
+            // atan2でx,z平面の角度を計算。z軸を基準にする。
+            return atan2(normalizedDirection.x, normalizedDirection.z)
+        } else {
+            return 0
         }
     }
 
@@ -304,6 +331,12 @@ extension Entity {
         container.addChild(thumbTip)
 
         return container
+    }
+}
+
+private extension SIMD3 where Scalar == Float {
+    func toSIMD4(w: Float) -> SIMD4<Float> {
+        return SIMD4<Float>(self.x, self.y, self.z, w)
     }
 }
 

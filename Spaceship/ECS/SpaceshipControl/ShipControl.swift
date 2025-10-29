@@ -13,11 +13,13 @@ class ShipControlParameters {
     var throttle: Float = 0
     var pitch: Float = 0 // radians
     var roll: Float = 0 // radians
+    var yaw: Float = 0 // radians
 
     func reset() {
         throttle = 0
         pitch = 0
         roll = 0
+        yaw = 0
     }
 }
 
