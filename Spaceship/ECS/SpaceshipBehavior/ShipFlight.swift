@@ -54,7 +54,7 @@ final class ShipFlightSystem: System {
         case both
     }
 
-    static var currentMode: FlightMode = .randomOnly
+    static var currentMode: FlightMode = .humanOnly
 
     /// このシステムが処理するエンティティを特定するためのクエリ。
     /// 飛行、スロットル、ピッチ/ロールのコンポーネントをすべて持つエンティティが対象です。
@@ -109,7 +109,7 @@ final class ShipFlightSystem: System {
                 let throttleValue = throttleComp.throttle
                 let baseWalkingSpeed: Float = 2.0 // meters per second (tweakable)
                 let forward = entity.transform.matrix.forward
-                let displacement = forward * throttleValue * baseWalkingSpeed * deltaTime
+                let displacement = -forward * throttleValue * baseWalkingSpeed * deltaTime
                 let newPosition = entity.transform.translation + displacement
                 entity.transform.translation = newPosition
             }
