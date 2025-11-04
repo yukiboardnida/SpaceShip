@@ -110,7 +110,7 @@ final class ShipFlightSystem: System {
                 let baseWalkingSpeed: Float = 2.0 // meters per second (tweakable)
                 let forward = entity.transform.matrix.forward
                 let displacement = forward * throttleValue * baseWalkingSpeed * deltaTime
-                var newPosition = entity.transform.translation + displacement
+                let newPosition = entity.transform.translation + displacement
                 entity.transform.translation = newPosition
             }
 
